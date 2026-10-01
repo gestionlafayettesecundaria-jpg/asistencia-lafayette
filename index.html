@@ -3,139 +3,826 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
   <title>Asistencia Lafayette</title>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
   <style>
+    * { box-sizing: border-box; }
+
     body {
-      font-family: Arial, sans-serif;
-      text-align: center;
       margin: 0;
-      padding: 25px;
-      background: #f4f4f4;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #172033;
+      text-align: center;
+    }
+
+    .contenedor {
+      width: 100%;
+      max-width: 520px;
+      margin: auto;
+    }
+
+    .tarjeta {
+      background: white;
+      border-radius: 16px;
+      padding: 22px;
+      margin-bottom: 16px;
+      box-shadow: 0 3px 12px rgba(0,0,0,.08);
     }
 
     h1 {
-      margin-bottom: 5px;
+      font-size: 25px;
+      margin: 5px 0;
     }
 
-    p {
-      color: #555;
+    h2 {
+      font-size: 18px;
+      margin: 8px 0 18px;
+    }
+
+    .subtitulo {
+      color: #687386;
+      margin-bottom: 22px;
+    }
+
+    input {
+      width: 100%;
+      padding: 16px;
+      font-size: 18px;
+      border: 1px solid #ccd2da;
+      border-radius: 10px;
+      margin-bottom: 12px;
     }
 
     button {
       width: 100%;
-      max-width: 400px;
-      padding: 18px;
-      margin-top: 20px;
-      font-size: 18px;
-      font-weight: bold;
+      padding: 16px;
+      margin: 6px 0;
       border: 0;
       border-radius: 10px;
-      background: #111827;
+      font-size: 17px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .principal {
+      background: #172033;
       color: white;
+    }
+
+    .modo {
+      background: #e8ebef;
+      color: #172033;
+    }
+
+    .modo.activo {
+      background: #172033;
+      color: white;
+    }
+
+    .cerrar {
+      background: #eceff2;
+      color: #555;
+      margin-top: 18px;
+    }
+
+    .botones-modo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
     }
 
     #reader {
       width: 100%;
-      max-width: 500px;
-      margin: 25px auto;
+      margin-top: 15px;
+      overflow: hidden;
+      border-radius: 12px;
     }
 
-    #resultado {
-      margin-top: 20px;
-      font-size: 18px;
+    .operador {
       font-weight: bold;
+      margin-bottom: 15px;
+    }
+
+    .resultado {
+      display: none;
+      padding: 18px;
+      border-radius: 12px;
+      margin-top: 15px;
+      text-align: left;
+      line-height: 1.5;
+    }
+
+    .resultado.ok {
+      display: block;
+      background: #e9f7ef;
+      border: 1px solid #b7dfc5;
+    }
+
+    .resultado.error {
+      display: block;
+      background: #fff0f0;
+      border: 1px solid #efb8b8;
+    }
+
+    .resultado.especial {
+      display: block;
+      background: #fff7df;
+      border: 1px solid #ead28a;
+    }
+
+    .nombre {
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .estado {
+      font-size: 20px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    #panelControl {
+      display: none;
+    }
+
+    #confirmacionEspecial {
+      display: none;
+    }
+
+    .pequeno {
+      font-size: 13px;
+      color: #737b88;
     }
   </style>
 </head>
 
 <body>
 
-  <h1>Colegio Lafayette</h1>
-  <p>Prueba del lector QR</p>
+<div class="contenedor">
 
-  <button id="boton" onclick="abrirCamara()">
-    📷 ABRIR CÁMARA
-  </button>
+  <div class="tarjeta">
 
-  <div id="reader"></div>
+    <h1>Colegio Lafayette</h1>
+    <div class="subtitulo">Control de Asistencia</div>
 
-  <div id="resultado"></div>
+    <!-- LOGIN -->
+    <div id="panelLogin">
 
-  <script>
-    let lector = null;
+      <input
+        id="clave"
+        type="password"
+        placeholder="Clave del operador"
+        autocomplete="off">
 
-    async function abrirCamara() {
+      <button
+        class="principal"
+        onclick="iniciarSesion()">
+        INGRESAR
+      </button>
 
-      const boton = document.getElementById("boton");
+      <div id="mensajeLogin" class="pequeno"></div>
 
-      boton.textContent = "ABRIENDO CÁMARA...";
+    </div>
 
-      try {
 
-        const camaras = await Html5Qrcode.getCameras();
+    <!-- CONTROL -->
+    <div id="panelControl">
 
-        if (!camaras || camaras.length === 0) {
-          throw new Error("No se encontraron cámaras.");
-        }
+      <div class="operador">
+        Sesión:
+        <span id="nombreOperador"></span>
+      </div>
 
-        let camara = camaras[camaras.length - 1].id;
+      <div class="botones-modo">
 
-        for (const item of camaras) {
+        <button
+          id="btnEntrada"
+          class="modo activo"
+          onclick="cambiarModo('ENTRADA')">
+          ENTRADA
+        </button>
 
-          const nombre =
-            String(item.label || "").toLowerCase();
+        <button
+          id="btnSalida"
+          class="modo"
+          onclick="cambiarModo('SALIDA')">
+          SALIDA
+        </button>
 
-          if (
-            nombre.includes("back") ||
-            nombre.includes("rear") ||
-            nombre.includes("trasera")
-          ) {
-            camara = item.id;
-          }
-        }
+      </div>
 
-        lector = new Html5Qrcode("reader");
+      <button
+        id="btnCamara"
+        class="principal"
+        onclick="abrirCamara()">
+        📷 ABRIR CÁMARA
+      </button>
 
-        await lector.start(
-          camara,
-          {
-            fps: 10,
-            qrbox: {
-              width: 250,
-              height: 250
-            }
-          },
-          codigoLeido,
-          function() {}
-        );
+      <div id="reader"></div>
 
-        boton.textContent = "✓ CÁMARA ACTIVA";
-        boton.disabled = true;
+      <div id="resultado" class="resultado"></div>
 
-      } catch (error) {
 
-        boton.textContent = "📷 ABRIR CÁMARA";
+      <!-- CONFIRMACIÓN ACCESO ESPECIAL -->
+      <div id="confirmacionEspecial"
+           class="resultado especial">
 
-        alert(
-          "No se pudo abrir la cámara.\n\n" +
-          (error.message || error)
+        <strong>ACCESO ESPECIAL</strong>
+
+        <p id="textoEspecial"></p>
+
+        <button
+          class="principal"
+          onclick="confirmarAccesoEspecial()">
+          CONFIRMAR ACCESO
+        </button>
+
+        <button
+          class="modo"
+          onclick="cancelarAccesoEspecial()">
+          CANCELAR
+        </button>
+
+      </div>
+
+      <button
+        class="cerrar"
+        onclick="cerrarSesion()">
+        CERRAR SESIÓN
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+  // URL DE APPS SCRIPT
+  const API =
+    "https://script.google.com/macros/s/AKfycbzHbl0hoCcNBHDMUUXbFeRsQ8NMlQASrMWerwdhUIj8wvh5ga7kMB2y8F2YllpriBLL/exec";
+
+
+  let token = "";
+  let operador = "";
+  let modo = "ENTRADA";
+
+  let lector = null;
+  let lectorActivo = false;
+
+  let procesando = false;
+  let matriculaPendiente = "";
+
+  let ultimaMatricula = "";
+  let ultimaLectura = 0;
+
+
+  // =====================================================
+  // COMUNICACIÓN CON APPS SCRIPT
+  // =====================================================
+
+  async function llamarAPI(datos) {
+
+    const respuesta = await fetch(API, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+      },
+      body: JSON.stringify(datos)
+    });
+
+    const texto = await respuesta.text();
+
+    return JSON.parse(texto);
+  }
+
+
+  // =====================================================
+  // LOGIN
+  // =====================================================
+
+  async function iniciarSesion() {
+
+    const clave =
+      document.getElementById("clave").value.trim();
+
+    const mensaje =
+      document.getElementById("mensajeLogin");
+
+    if (!clave) {
+      mensaje.textContent = "Escribe tu clave.";
+      return;
+    }
+
+    mensaje.textContent = "Verificando...";
+
+    try {
+
+      const respuesta = await llamarAPI({
+        api: "LOGIN",
+        clave: clave
+      });
+
+      if (!respuesta.ok) {
+        mensaje.textContent =
+          respuesta.mensaje || "Clave incorrecta.";
+        return;
+      }
+
+      token = respuesta.token;
+      operador = respuesta.operador;
+
+      document.getElementById("nombreOperador")
+        .textContent = operador;
+
+      document.getElementById("panelLogin")
+        .style.display = "none";
+
+      document.getElementById("panelControl")
+        .style.display = "block";
+
+      document.getElementById("clave").value = "";
+
+      mensaje.textContent = "";
+
+    } catch (error) {
+
+      mensaje.textContent =
+        "No fue posible conectar con el sistema.";
+
+    }
+  }
+
+
+  // =====================================================
+  // ENTRADA / SALIDA
+  // =====================================================
+
+  function cambiarModo(nuevoModo) {
+
+    if (procesando) return;
+
+    modo = nuevoModo;
+
+    document.getElementById("btnEntrada")
+      .classList.toggle(
+        "activo",
+        modo === "ENTRADA"
+      );
+
+    document.getElementById("btnSalida")
+      .classList.toggle(
+        "activo",
+        modo === "SALIDA"
+      );
+
+    limpiarResultado();
+  }
+
+
+  // =====================================================
+  // CÁMARA
+  // =====================================================
+
+  async function abrirCamara() {
+
+    if (lectorActivo) return;
+
+    const boton =
+      document.getElementById("btnCamara");
+
+    boton.textContent = "ABRIENDO CÁMARA...";
+
+    try {
+
+      const camaras =
+        await Html5Qrcode.getCameras();
+
+      if (!camaras || camaras.length === 0) {
+        throw new Error(
+          "No se encontraron cámaras."
         );
       }
+
+      let camara =
+        camaras[camaras.length - 1].id;
+
+      for (const item of camaras) {
+
+        const nombre =
+          String(item.label || "")
+            .toLowerCase();
+
+        if (
+          nombre.includes("back") ||
+          nombre.includes("rear") ||
+          nombre.includes("trasera")
+        ) {
+          camara = item.id;
+        }
+      }
+
+      lector =
+        new Html5Qrcode("reader");
+
+      await lector.start(
+        camara,
+        {
+          fps: 10,
+          qrbox: {
+            width: 250,
+            height: 250
+          }
+        },
+        qrDetectado,
+        function() {}
+      );
+
+      lectorActivo = true;
+
+      boton.textContent =
+        "✓ LECTOR QR ACTIVO";
+
+      boton.disabled = true;
+
+    } catch (error) {
+
+      boton.textContent =
+        "📷 ABRIR CÁMARA";
+
+      alert(
+        "No fue posible abrir la cámara.\n\n" +
+        (error.message || error)
+      );
+    }
+  }
+
+
+  // =====================================================
+  // QR DETECTADO
+  // =====================================================
+
+  function qrDetectado(textoQR) {
+
+    if (procesando) return;
+
+    const matricula =
+      extraerMatricula(textoQR);
+
+    if (!matricula) {
+      mostrarError(
+        "El código QR no contiene una matrícula válida."
+      );
+      return;
     }
 
+    const ahora = Date.now();
 
-    function codigoLeido(texto) {
-
-      document.getElementById("resultado").innerHTML =
-        "✓ QR DETECTADO<br><br>" +
-        texto;
+    // Evita leer repetidamente el mismo QR.
+    if (
+      matricula === ultimaMatricula &&
+      ahora - ultimaLectura < 5000
+    ) {
+      return;
     }
-  </script>
+
+    ultimaMatricula = matricula;
+    ultimaLectura = ahora;
+
+    registrarAlumno(matricula, false);
+  }
+
+
+  function extraerMatricula(texto) {
+
+    const valor = String(texto || "").trim();
+
+    // QR definitivo: solamente matrícula.
+    if (/^\d+$/.test(valor)) {
+      return valor;
+    }
+
+    // Compatibilidad con los QR de prueba anteriores.
+    try {
+
+      const url = new URL(valor);
+
+      const matricula =
+        url.searchParams.get("matricula");
+
+      if (
+        matricula &&
+        /^\d+$/.test(matricula)
+      ) {
+        return matricula;
+      }
+
+    } catch (e) {}
+
+    return "";
+  }
+
+
+  // =====================================================
+  // REGISTRO
+  // =====================================================
+
+  async function registrarAlumno(
+    matricula,
+    confirmarEspecial
+  ) {
+
+    if (procesando) return;
+
+    procesando = true;
+    matriculaPendiente = matricula;
+
+    mostrarProcesando();
+
+    try {
+
+      const respuesta = await llamarAPI({
+        api: "REGISTRAR",
+        matricula: matricula,
+        accion: modo,
+        token: token,
+        confirmarEspecial:
+          confirmarEspecial === true
+      });
+
+
+      // ACCESO DESPUÉS DE 8:05
+      if (respuesta.requiereConfirmacion) {
+
+        procesando = false;
+
+        document.getElementById("resultado")
+          .style.display = "none";
+
+        const panel =
+          document.getElementById(
+            "confirmacionEspecial"
+          );
+
+        document.getElementById(
+          "textoEspecial"
+        ).innerHTML =
+          "<strong>" +
+          escapar(respuesta.alumno || "") +
+          "</strong><br>" +
+          escapar(respuesta.grupo || "") +
+          "<br><br>" +
+          "La hora requiere autorización.";
+
+        panel.style.display = "block";
+
+        return;
+      }
+
+
+      if (!respuesta.ok) {
+
+        mostrarError(
+          respuesta.mensaje ||
+          "No fue posible realizar el registro."
+        );
+
+        procesando = false;
+        matriculaPendiente = "";
+
+        return;
+      }
+
+
+      mostrarExito(respuesta);
+
+      procesando = false;
+      matriculaPendiente = "";
+
+
+    } catch (error) {
+
+      mostrarError(
+        "No fue posible conectar con Google Sheets."
+      );
+
+      procesando = false;
+      matriculaPendiente = "";
+    }
+  }
+
+
+  // =====================================================
+  // ACCESO ESPECIAL
+  // =====================================================
+
+  function confirmarAccesoEspecial() {
+
+    if (!matriculaPendiente) return;
+
+    document.getElementById(
+      "confirmacionEspecial"
+    ).style.display = "none";
+
+    /*
+     * registrarAlumno normalmente bloquea si procesando=true.
+     * Aquí lo dejamos libre para realizar la confirmación.
+     */
+    procesando = false;
+
+    registrarAlumno(
+      matriculaPendiente,
+      true
+    );
+  }
+
+
+  function cancelarAccesoEspecial() {
+
+    document.getElementById(
+      "confirmacionEspecial"
+    ).style.display = "none";
+
+    matriculaPendiente = "";
+    procesando = false;
+
+    limpiarResultado();
+  }
+
+
+  // =====================================================
+  // MENSAJES
+  // =====================================================
+
+  function mostrarProcesando() {
+
+    const caja =
+      document.getElementById("resultado");
+
+    caja.className = "resultado";
+    caja.style.display = "block";
+
+    caja.innerHTML =
+      "<strong>Procesando...</strong>";
+  }
+
+
+  function mostrarExito(datos) {
+
+    const caja =
+      document.getElementById("resultado");
+
+    caja.className =
+      "resultado ok";
+
+    caja.innerHTML =
+      '<div class="nombre">' +
+      escapar(datos.alumno || "") +
+      '</div>' +
+
+      '<div>' +
+      escapar(datos.grupo || "") +
+      '</div>' +
+
+      '<div class="estado">' +
+      escapar(
+        datos.estado ||
+        datos.mensaje ||
+        "REGISTRADO"
+      ) +
+      '</div>' +
+
+      (
+        datos.hora
+          ? '<div>Hora: ' +
+            escapar(datos.hora) +
+            '</div>'
+          : ''
+      );
+  }
+
+
+  function mostrarError(mensaje) {
+
+    const caja =
+      document.getElementById("resultado");
+
+    caja.className =
+      "resultado error";
+
+    caja.innerHTML =
+      "<strong>" +
+      escapar(mensaje) +
+      "</strong>";
+  }
+
+
+  function limpiarResultado() {
+
+    const caja =
+      document.getElementById("resultado");
+
+    caja.style.display = "none";
+    caja.innerHTML = "";
+
+    document.getElementById(
+      "confirmacionEspecial"
+    ).style.display = "none";
+  }
+
+
+  // =====================================================
+  // CERRAR SESIÓN
+  // =====================================================
+
+  async function cerrarSesion() {
+
+    if (procesando) return;
+
+    try {
+
+      if (lectorActivo && lector) {
+
+        await lector.stop();
+
+        lectorActivo = false;
+      }
+
+    } catch (e) {}
+
+
+    try {
+
+      if (token) {
+
+        await llamarAPI({
+          api: "LOGOUT",
+          token: token
+        });
+
+      }
+
+    } catch (e) {}
+
+
+    token = "";
+    operador = "";
+    modo = "ENTRADA";
+
+    ultimaMatricula = "";
+    ultimaLectura = 0;
+    matriculaPendiente = "";
+
+    document.getElementById(
+      "panelControl"
+    ).style.display = "none";
+
+    document.getElementById(
+      "panelLogin"
+    ).style.display = "block";
+
+    document.getElementById(
+      "btnEntrada"
+    ).classList.add("activo");
+
+    document.getElementById(
+      "btnSalida"
+    ).classList.remove("activo");
+
+    const boton =
+      document.getElementById("btnCamara");
+
+    boton.disabled = false;
+    boton.textContent =
+      "📷 ABRIR CÁMARA";
+
+    limpiarResultado();
+  }
+
+
+  // =====================================================
+  // SEGURIDAD PARA TEXTO
+  // =====================================================
+
+  function escapar(texto) {
+
+    return String(texto)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+</script>
 
 </body>
 </html>
